@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>暗号解読パズル</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #0a0e17;
+    --bg-card: #111827;
+    --bg-surface: #1a2235;
+    --bg-input: #0d1321;
+    --accent: #3b82f6;
+    --accent-glow: rgba(59, 130, 246, 0.25);
+    --accent-dim: #1e3a5f;
+    --success: #10b981;
+    --success-glow: rgba(16, 185, 129, 0.15);
+    --danger: #ef4444;
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-hint: #64748b;
+    --border: rgba(148, 163, 184, 0.12);
+    --border-accent: rgba(59, 130, 246, 0.3);
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-jp: 'Noto Sans JP', sans-serif;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: var(--font-jp);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background:
+      radial-gradient(ellipse 600px 400px at 20% 10%, rgba(59,130,246,0.06), transparent),
+      radial-gradient(ellipse 500px 500px at 80% 80%, rgba(16,185,129,0.04), transparent);
+    pointer-events: none;
+    z-index: 0;
+  }
+  #game {
+    max-width: 640px;
+    width: 100%;
+    position: relative;
+    z-index: 1;
+  }
+  .header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+  .header h1 {
+    font-family: var(--font-mono);
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--text-primary);
+  }
+  .header p {
+    font-size: 15px;
+    color: var(--text-hint);
+    margin-top: 6px;
+  }
+  .stage-card {
+    background: var(--bg-card);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .stage-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent 80%);
+  }
+  .stage-desc {
+    font-size: 16px;
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+    line-height: 1.8;
+    text-align: center;
+  }
+  .illust-area {
+    background: var(--bg-input);
+    border: 0.5px solid var(--border-accent);
+    border-radius: var(--radius-sm);
+    padding: 2rem 1.5rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .illust-area svg { width: 100%; max-width: 540px; height: auto; }
+  .hint-box {
+    font-size: 14px;
+    color: var(--text-secondary);
+    background: rgba(59,130,246,0.06);
+    border-left: 3px solid var(--accent-dim);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: 0.7rem 1rem;
+    margin-bottom: 1rem;
+    display: none;
+    line-height: 1.8;
+  }
+  .input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 0.2rem;
+  }
+  .input-row input {
+    flex: 1;
+    height: 54px;
+    font-family: var(--font-mono);
+    font-size: 18px;
+    letter-spacing: 0.1em;
+    padding: 0 14px;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-input);
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .input-row input::placeholder {
+    color: var(--text-hint);
+    font-family: var(--font-jp);
+    font-size: 14px;
+    letter-spacing: 0;
+  }
+  .input-row input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  .btn {
+    height: 54px;
+    padding: 0 26px;
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 15px;
+    font-family: var(--font-jp);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn:hover {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border-color: var(--text-hint);
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+    font-weight: 500;
+  }
+  .btn-primary:hover { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .feedback {
+    font-size: 14px;
+    padding: 0.5rem 0;
+    min-height: 20px;
+    font-family: var(--font-mono);
+    font-weight: 500;
+  }
+  .feedback.ng { color: var(--danger); }
+  .actions { display: flex; gap: 8px; margin-top: 0.5rem; flex-wrap: wrap; }
+
+  .correct-overlay {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 1.5rem;
+    padding: 4rem 2.5rem;
+    background: var(--bg-card);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    position: relative;
+    overflow: hidden;
+  }
+  .correct-overlay::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, rgba(16,185,129,0.12), transparent 50%, rgba(59,130,246,0.08));
+    pointer-events: none;
+  }
+  .correct-text {
+    font-family: var(--font-jp);
+    font-size: 64px;
+    font-weight: 700;
+    color: var(--success);
+    letter-spacing: 0.25em;
+    text-shadow: 0 0 40px var(--success-glow), 0 0 80px var(--success-glow);
+    animation: correctPulse 1.5s ease-in-out infinite alternate;
+  }
+  @keyframes correctPulse {
+    from { text-shadow: 0 0 30px var(--success-glow), 0 0 60px var(--success-glow); }
+    to   { text-shadow: 0 0 50px rgba(16,185,129,0.35), 0 0 100px rgba(16,185,129,0.2); }
+  }
+  .correct-answer-display {
+    font-family: var(--font-mono);
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    color: var(--accent);
+  }
+  .correct-sub {
+    font-size: 16px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+
+  .confetti-container {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 100;
+    overflow: hidden;
+  }
+  .confetti-piece {
+    position: absolute;
+    top: -10px;
+    opacity: 0.85;
+    animation: confettiFall linear forwards;
+  }
+  @keyframes confettiFall {
+    0%   { transform: translateY(0) rotate(0deg); opacity: 0.9; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .stage-card, .correct-overlay { animation: fadeIn 0.35s ease-out; }
+
+  /* Q2 specific */
+  .map-section {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .qr-area {
+    background: #fff;
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .qr-area canvas {
+    display: block;
+  }
+  .qr-label {
+    font-size: 11px;
+    color: #64748b;
+    font-family: var(--font-mono);
+    letter-spacing: 0.05em;
+  }
+  .map-link-area {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .map-link-label {
+    font-size: 13px;
+    color: var(--text-hint);
+  }
+  .map-link {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--accent);
+    word-break: break-all;
+    text-decoration: none;
+    border-bottom: 1px dashed rgba(59,130,246,0.4);
+    padding-bottom: 2px;
+    transition: color 0.15s;
+  }
+  .map-link:hover { color: #60a5fa; }
+  .map-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 40px;
+    padding: 0 16px;
+    background: rgba(59,130,246,0.1);
+    border: 0.5px solid var(--border-accent);
+    border-radius: var(--radius-sm);
+    color: var(--accent);
+    font-size: 14px;
+    font-family: var(--font-jp);
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .map-btn:hover { background: rgba(59,130,246,0.2); }
+  .map-btn svg { width: 16px; height: 16px; fill: currentColor; }
+
+  .letter-tiles {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .letter-tile {
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 24px;
+    font-weight: 700;
+    background: var(--bg-input);
+    border: 0.5px solid var(--border-accent);
+    border-radius: var(--radius-sm);
+    color: var(--accent);
+    text-shadow: 0 0 12px var(--accent-glow);
+  }
+  .letter-tile.heart {
+    color: #f472b6;
+    font-size: 20px;
+    text-shadow: 0 0 12px rgba(244,114,182,0.3);
+    border-color: rgba(244,114,182,0.3);
+  }
+
+  .q2-instruction {
+    font-size: 14px;
+    color: var(--text-secondary);
+    text-align: center;
+    line-height: 1.8;
+    margin-bottom: 1.5rem;
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    padding: 1rem 1.25rem;
+    border: 0.5px solid var(--border);
+  }
+
+  @media (max-width: 480px) {
+    body { padding: 1rem 0.75rem; }
+    .correct-text { font-size: 48px; }
+    .correct-answer-display { font-size: 24px; }
+    .map-section { flex-direction: column; align-items: center; }
+    .map-link-area { align-items: center; }
+    .letter-tile { width: 44px; height: 44px; font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="game">
+  <div class="header" id="game-header">
+    <h1>Q1</h1>
+    <p>イラストに隠された暗号を解読せよ</p>
+  </div>
+
+  <!-- ===== Q1 ===== -->
+  <div id="puzzle-area-q1">
+    <div class="stage-card">
+      <div class="stage-desc">
+        <strong style="color:var(--accent)">頭を使って読め。</strong>5文字の英単語が答え。<br>
+      </div>
+
+      <div class="illust-area">
+        <svg viewBox="0 0 460 130" xmlns="http://www.w3.org/2000/svg">
+          <!-- 1: S = Star -->
+          <g transform="translate(46,55)">
+            <polygon points="0,-30 9,-11 30,-11 14,4 19,26 0,14 -19,26 -14,4 -30,-11 -9,-11"
+                     fill="#facc15" stroke="#eab308" stroke-width="1.2"/>
+            <text x="0" y="56" text-anchor="middle" fill="#64748b"
+                  font-family="'JetBrains Mono',monospace" font-size="14" font-weight="700">1</text>
+          </g>
+          <!-- 2: M = Moon -->
+          <g transform="translate(138,55)">
+            <circle cx="0" cy="-4" r="24" fill="#a5b4fc"/>
+            <circle cx="11" cy="-12" r="19" fill="#111827"/>
+            <text x="0" y="56" text-anchor="middle" fill="#64748b"
+                  font-family="'JetBrains Mono',monospace" font-size="14" font-weight="700">2</text>
+          </g>
+          <!-- 3: I = Ice cream -->
+          <g transform="translate(230,55)">
+            <polygon points="-11,-4 11,-4 0,30" fill="#d4a574" stroke="#b8956a" stroke-width="1"/>
+            <circle cx="0" cy="-12" r="15" fill="#f9a8d4" stroke="#f472b6" stroke-width="1"/>
+            <circle cx="-6" cy="-16" r="2.8" fill="#a855f7"/>
+            <circle cx="5" cy="-10" r="2.3" fill="#3b82f6"/>
+            <circle cx="-2" cy="-7" r="2.3" fill="#22c55e"/>
+            <text x="0" y="56" text-anchor="middle" fill="#64748b"
+                  font-family="'JetBrains Mono',monospace" font-size="14" font-weight="700">3</text>
+          </g>
+          <!-- 4: L = Leaf -->
+          <g transform="translate(322,55)">
+            <ellipse cx="2" cy="-6" rx="13" ry="24" fill="#4ade80" stroke="#22c55e" stroke-width="1.2" transform="rotate(-15,2,-6)"/>
+            <line x1="2" y1="-28" x2="2" y2="16" stroke="#16a34a" stroke-width="1.8"/>
+            <line x1="2" y1="-17" x2="-7" y2="-24" stroke="#16a34a" stroke-width="1.2"/>
+            <line x1="2" y1="-6" x2="9" y2="-14" stroke="#16a34a" stroke-width="1.2"/>
+            <line x1="2" y1="5" x2="-5" y2="-1" stroke="#16a34a" stroke-width="1.2"/>
+            <text x="2" y="56" text-anchor="middle" fill="#64748b"
+                  font-family="'JetBrains Mono',monospace" font-size="14" font-weight="700">4</text>
+          </g>
+          <!-- 5: E = Egg -->
+          <g transform="translate(414,55)">
+            <ellipse cx="0" cy="2" rx="18" ry="26" fill="#fef9ee" stroke="#d4a44a" stroke-width="1.5"/>
+            <ellipse cx="0" cy="-6" rx="16" ry="20" fill="#fef3c7" opacity="0.6"/>
+            <ellipse cx="-4" cy="-12" rx="5" ry="4" fill="#fff" opacity="0.55" transform="rotate(-20,-4,-12)"/>
+            <path d="M -6,8 Q -4,5 -2,9 Q 0,6 2,10 Q 4,7 6,9" fill="none" stroke="#c8a04a" stroke-width="0.8" opacity="0.5"/>
+            <ellipse cx="0" cy="22" rx="14" ry="3" fill="#0a0e17" opacity="0.15"/>
+            <text x="0" y="56" text-anchor="middle" fill="#64748b"
+                  font-family="'JetBrains Mono',monospace" font-size="14" font-weight="700">5</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="hint-box" id="hint-box-q1">
+        1つ目：夜空でキラキラ光るもの → <strong>S</strong>tar<br>
+        2つ目：夜空に浮かぶ丸いもの → <strong>M</strong>oon<br>
+        3つ目：コーンに乗った冷たいお菓子 → <strong>I</strong>ce cream<br>
+        4つ目：木の枝についている緑のもの → <strong>L</strong>eaf<br>
+        5つ目：殻を割って食べる朝ごはん → <strong>E</strong>gg
+      </div>
+
+      <div class="input-row">
+        <input type="text" id="answer-input-q1" placeholder="答えを入力（英字5文字）" maxlength="10"
+               autocomplete="off" autocorrect="off" spellcheck="false">
+        <button class="btn btn-primary" onclick="checkQ1()">解読</button>
+      </div>
+      <div class="feedback" id="feedback-q1"></div>
+      <div class="actions">
+        <button class="btn" onclick="showHint('hint-box-q1')">ヒントを見る</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Q1 正解画面 ===== -->
+  <div class="correct-overlay" id="correct-screen-q1">
+    <div class="correct-text">正 解</div>
+    <div class="correct-answer-display">SMILE</div>
+    <div class="correct-sub">暗号を見事に解読しました！</div>
+    <button class="btn btn-primary" onclick="goToQ2()">Q2 へ進む</button>
+  </div>
+
+  <!-- ===== Q2 ===== -->
+  <div id="puzzle-area-q2" style="display:none;">
+    <div class="stage-card">
+      <div class="stage-desc">
+        まずは下のQRコード（またはリンク）から現地へ向かえ。
+      </div>
+
+      <div class="map-section">
+        <div class="qr-area">
+          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAbwAAAG8CAAAAACA208DAAAEjElEQVR42u3aQXbCMBBEQd//0skBsond05LA9Zc8MEHlVcfXjz62yxHAEzzBgyd4gid48ARP8OAJnuAJHjzBEzzBgyd4ggdP8ARP8OAJnuAJHjzBEzx4gid4ggdP8AQPnuAJnuDBEzzBU4x3FYp+QHCd5G874RzgwYMHDx48ePDgwYMHDx48ePDgwYO35rD+c527rycYyeEecfPBgwcPHjx48ODBgwcPHjx48ODBgwdv9NCnfvzUwSWQJ5wDPHjw4MGDBw8ePHjw4MGDBw8ePHjwvg8vuU7yfnjw4MGDBw8ePHjw4MGDBw8ePHjw4MFrj8h3B2t48ODBgwcPHjx48ODBgwcPHjx48OC9B69xnQQpOcTG2N24Djx48ODBgwcPHjx48ODBgwcPHjx48GbH3LvdHXxPe71xDvDgwYMHDx48ePDgwYMHDx48ePDgwZvF21UyFidj9NQAXTkTePDgwYMHDx48ePDgwYMHDx48ePDgxYc49Xry90w9yDv1sG/yHnjw4MGDBw8ePHjw4MGDBw8ePHjw4K3HSx60bY/IycOvUw8QT0HCgwcPHjx48ODBgwcPHjx48ODBgwcvrzEQtw9u6qDbNw08ePDgwYMHDx48ePDgwYMHDx48ePDWDNNTn23cEFOjeQKQgMGDBw8ePHjw4MGDBw8ePHjw4MGDBy8fpq+hVg7E7d/VuCnhwYMHDx48ePDgwYMHDx48ePDgwYPXG6bbnTxMT/3N8ODBgwcPHjx48ODBgwcPHjx48ODBWz9MJyNy8tBqe6Ru/K7j/qsADx48ePDgwYMHDx48ePDgwYMHD94L8BoPmE4NxO1hunEm0Q0EDx48ePDgwYMHDx48ePDgwYMHDx68R3jJQ6gJwBTGyhvluGEaHjx48ODBgwcPHjx48ODBgwcPHryX4e1CbYzg7XF5aviGBw8ePHjw4MGDBw8ePHjw4MGDBw/e7DCdjK3t9yc33K6bFR48ePDgwYMHDx48ePDgwYMHDx48eGuG6amxNfnxjYF719gNDx48ePDgwYMHDx48ePDgwYMHDx68vcN0cp2p72oP6MkwPRU8ePDgwYMHDx48ePDgwYMHDx48ePDOaWp0/tbrw4MHDx48ePDgwYMHDx48ePDgwYMHLx+mp0q+KxnHG99197Pw4MGDBw8ePHjw4MGDBw8ePHjw4MFbj9cYoJPBd+Vn794ElREfHjx48ODBgwcPHjx48ODBgwcPHjx48aG3h92pMXoKo/EQLTx48ODBgwcPHjx48ODBgwcPHjx48D4Xb+pAk+F45TWPeOgWHjx48ODBgwcPHjx48ODBgwcPHjx4tWG68dnk+o2bCR48ePDgwYMHDx48ePDgwYMHDx48eOvxGteZGoXbN+K2M4QHDx48ePDgwYMHDx48ePDgwYMHD96jL54qwUge6m2P4I0bDh48ePDgwYMHDx48ePDgwYMHDx48eM/wdE7w4Ame4METPMETPHiCJ3jwBE/wBA+e4Ame4METPMGDJ3iCJ3jwBE/wBA+e4AkePMETPMGDJ3iCB0/wBE/w4Ame4OlPv9F7H7SPSk2zAAAAAElFTkSuQmCC" width="180" height="180" alt="QR Code" style="display:block; image-rendering: pixelated;">
+          <div class="qr-label">SCAN ME</div>
+        </div>
+        <div class="map-link-area">
+          <div class="map-link-label">Google Map で開く</div>
+          <a class="map-link" href="https://maps.app.goo.gl/qUzxF2aagwaBU6aq5" target="_blank" rel="noopener">
+            maps.app.goo.gl/qUzxF2aagwaBU6aq5
+          </a>
+          <a class="map-btn" href="https://maps.app.goo.gl/qUzxF2aagwaBU6aq5" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+            マップを開く
+          </a>
+        </div>
+      </div>
+
+      <div class="q2-instruction">
+        <strong style="color:var(--accent)">周りを見渡して♡を2つ見つけろ。</strong><br>
+                5文字の英単語が答え。<br>
+      </div>
+
+      <div class="illust-area">
+        <svg viewBox="0 0 560 170" xmlns="http://www.w3.org/2000/svg">
+          <!-- 1: N = ④ -->
+          <g transform="translate(40,100)">
+            <circle cx="0" cy="0" r="28" fill="#e2e8f0"/>
+            <text x="0" y="8" text-anchor="middle" fill="#0d1321"
+                  font-family="'JetBrains Mono',monospace" font-size="24" font-weight="700">4</text>
+          </g>
+          <!-- 2: I = ② + ♡ on top -->
+          <g transform="translate(120,100)">
+            <circle cx="0" cy="0" r="28" fill="#e2e8f0"/>
+            <text x="0" y="8" text-anchor="middle" fill="#0d1321"
+                  font-family="'JetBrains Mono',monospace" font-size="24" font-weight="700">2</text>
+            <!-- heart sitting on top of circle -->
+            <path d="M 0,-44 C -8,-56 -22,-50 -22,-40 C -22,-32 -14,-26 0,-18 C 14,-26 22,-32 22,-40 C 22,-50 8,-56 0,-44 Z"
+                  fill="#f43f5e"/>
+          </g>
+          <!-- 3: I = ② + ♡ on top -->
+          <g transform="translate(200,100)">
+            <circle cx="0" cy="0" r="28" fill="#e2e8f0"/>
+            <text x="0" y="8" text-anchor="middle" fill="#0d1321"
+                  font-family="'JetBrains Mono',monospace" font-size="24" font-weight="700">2</text>
+            <!-- heart sitting on top of circle -->
+            <path d="M 0,-44 C -8,-56 -22,-50 -22,-40 C -22,-32 -14,-26 0,-18 C 14,-26 22,-32 22,-40 C 22,-50 8,-56 0,-44 Z"
+                  fill="#f43f5e"/>
+          </g>
+          <!-- 4: G = ① -->
+          <g transform="translate(280,100)">
+            <circle cx="0" cy="0" r="28" fill="#e2e8f0"/>
+            <text x="0" y="8" text-anchor="middle" fill="#0d1321"
+                  font-family="'JetBrains Mono',monospace" font-size="24" font-weight="700">1</text>
+          </g>
+          <!-- 5: A = ③ -->
+          <g transform="translate(360,100)">
+            <circle cx="0" cy="0" r="28" fill="#e2e8f0"/>
+            <text x="0" y="8" text-anchor="middle" fill="#0d1321"
+                  font-family="'JetBrains Mono',monospace" font-size="24" font-weight="700">3</text>
+          </g>
+          <!-- 6: T = ⑤ -->
+          <g transform="translate(440,100)">
+            <circle cx="0" cy="0" r="28" fill="#e2e8f0"/>
+            <text x="0" y="8" text-anchor="middle" fill="#0d1321"
+                  font-family="'JetBrains Mono',monospace" font-size="24" font-weight="700">5</text>
+          </g>
+          <!-- 7: A = ③ -->
+          <g transform="translate(520,100)">
+            <circle cx="0" cy="0" r="28" fill="#e2e8f0"/>
+            <text x="0" y="8" text-anchor="middle" fill="#0d1321"
+                  font-family="'JetBrains Mono',monospace" font-size="24" font-weight="700">3</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="hint-box" id="hint-box-q2">
+        このモニュメントは、ある都市名をアルファベットで並べたもの。<br>
+        ♡がついている文字は同じアルファベット。<br>
+        ①→②→③→④→⑤ の順に読むと... 「でっかい」を英語で言うと？
+      </div>
+
+      <div class="input-row">
+        <input type="text" id="answer-input-q2" placeholder="答えを入力（英字5文字）" maxlength="10"
+               autocomplete="off" autocorrect="off" spellcheck="false">
+        <button class="btn btn-primary" onclick="checkQ2()">解読</button>
+      </div>
+      <div class="feedback" id="feedback-q2"></div>
+      <div class="actions">
+        <button class="btn" onclick="showHint('hint-box-q2')">ヒントを見る</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Q2 正解画面 ===== -->
+  <div class="correct-overlay" id="correct-screen-q2">
+    <div class="correct-text">正 解</div>
+    <div class="correct-answer-display">GIANT</div>
+    <div class="correct-sub">全ての暗号を解読しました！<br>おめでとうございます！</div>
+    <button class="btn btn-primary" onclick="resetAll()">最初からやり直す</button>
+  </div>
+</div>
+
+<!-- QR Code generator (minimal, self-contained) -->
+<script>
+// ====================================================
+// Game logic
+// ====================================================
+var ANSWER_Q1 = 'SMILE';
+var ANSWER_Q2 = 'GIANT';
+
+document.getElementById('answer-input-q1').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') checkQ1();
+});
+
+function checkQ1() {
+  var input = document.getElementById('answer-input-q1');
+  var fb = document.getElementById('feedback-q1');
+  if (!input) return;
+  var val = input.value.trim().toUpperCase();
+  if (val === ANSWER_Q1) {
+    document.getElementById('puzzle-area-q1').style.display = 'none';
+    document.getElementById('correct-screen-q1').style.display = 'flex';
+    launchConfetti();
+  } else {
+    fb.className = 'feedback ng';
+    fb.textContent = 'もう一度よく観察してみよう...';
+    input.select();
+  }
+}
+
+function goToQ2() {
+  document.getElementById('correct-screen-q1').style.display = 'none';
+  document.getElementById('puzzle-area-q2').style.display = 'block';
+  document.getElementById('game-header').querySelector('h1').textContent = 'Q2';
+  document.getElementById('game-header').querySelector('p').textContent = '現地へ行き、暗号を解読せよ';
+  setTimeout(function() {
+    var el = document.getElementById('answer-input-q2');
+    if (el) el.focus();
+  }, 100);
+}
+
+function checkQ2() {
+  var input = document.getElementById('answer-input-q2');
+  var fb = document.getElementById('feedback-q2');
+  if (!input) return;
+  var val = input.value.trim().toUpperCase();
+  if (val === ANSWER_Q2) {
+    document.getElementById('puzzle-area-q2').style.display = 'none';
+    document.getElementById('game-header').style.display = 'none';
+    document.getElementById('correct-screen-q2').style.display = 'flex';
+    launchConfetti();
+  } else {
+    fb.className = 'feedback ng';
+    fb.textContent = 'もう一度考えてみよう...';
+    input.select();
+  }
+}
+
+function showHint(id) {
+  var box = document.getElementById(id);
+  if (box) box.style.display = 'block';
+}
+
+function resetAll() {
+  document.getElementById('correct-screen-q1').style.display = 'none';
+  document.getElementById('correct-screen-q2').style.display = 'none';
+  document.getElementById('puzzle-area-q2').style.display = 'none';
+  document.getElementById('puzzle-area-q1').style.display = 'block';
+  document.getElementById('game-header').style.display = 'block';
+  document.getElementById('game-header').querySelector('h1').textContent = 'Q1';
+  document.getElementById('game-header').querySelector('p').textContent = 'イラストに隠された暗号を解読せよ';
+  document.getElementById('answer-input-q1').value = '';
+  document.getElementById('answer-input-q2').value = '';
+  document.getElementById('feedback-q1').textContent = '';
+  document.getElementById('feedback-q2').textContent = '';
+  document.getElementById('hint-box-q1').style.display = 'none';
+  document.getElementById('hint-box-q2').style.display = 'none';
+  document.getElementById('answer-input-q1').focus();
+}
+
+function launchConfetti() {
+  var c = document.createElement('div');
+  c.className = 'confetti-container';
+  document.body.appendChild(c);
+  var colors = ['#facc15','#3b82f6','#10b981','#f472b6','#a855f7','#ef4444','#f97316'];
+  for (var i = 0; i < 60; i++) {
+    var p = document.createElement('div');
+    p.className = 'confetti-piece';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+    p.style.animationDuration = (2 + Math.random() * 2) + 's';
+    p.style.animationDelay = (Math.random() * 1.2) + 's';
+    var size = 6 + Math.random() * 6;
+    p.style.width = size + 'px';
+    p.style.height = size + 'px';
+    p.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+    c.appendChild(p);
+  }
+  setTimeout(function() { c.remove(); }, 5000);
+}
+
+// Bind Q2 enter key
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('answer-input-q2').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') checkQ2();
+  });
+});
+
+document.getElementById('answer-input-q1').focus();
+</script>
+
+</body>
+</html>
